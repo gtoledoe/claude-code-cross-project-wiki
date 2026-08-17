@@ -9,6 +9,9 @@ Step-by-step guide to set up the multi-project wiki system for Claude Code.
 - **Obsidian** installed (the system was built and tested with Obsidian; it also works with any folder of `.md` files, but examples and conventions follow Obsidian patterns)
 - **Claude Code** installed
 - Your project already has a `CLAUDE.md` file (or you're ready to create one)
+- **For Step 9 (executable checks):** `python3` available, and your vault initialized as a
+  git repo (`cd "your vault" && git init`). Both are optional — the protocol works without
+  them, you just lose the automated half.
 
 ---
 
@@ -239,6 +242,45 @@ Claude Code should:
 - Know where to document things
 
 If it does, you're set up correctly. ✅
+
+---
+
+### Step 9 — Install the executable checks (optional, ~3 minutes)
+
+Conventions decay. These four scripts are the half a machine can verify. No dependencies.
+
+```bash
+# from the repo you cloned
+cp -R tools "$HOME/Documents/Obsidian Vault/tools"
+
+cd "$HOME/Documents/Obsidian Vault"
+git init                                  # if it is not a repo yet
+python3 tools/test_secret_scan.py         # expect: 17/17 cases passed
+python3 tools/vault.py freshness          # expect: a report, and no note modified
+python3 tools/vault.py ledger sync        # index the decisions you already wrote
+```
+
+Add a remote if you want the notes actually backed up:
+
+```bash
+git remote add origin <your-private-repo-url>
+```
+
+Then close a session with:
+
+```bash
+bash tools/close.sh my-project
+```
+
+**Wire that last command into your close-session routine** (a skill, a slash command, or
+your own checklist). Left as "run it by hand", it does not get run — and you find out the
+day the disk does.
+
+A note on the first run: if your vault lives in iCloud Drive, OneDrive or Dropbox with
+sync-on-demand, the first pass can take minutes of I/O wait while files are materialized.
+Later runs are fast.
+
+See `tools/README.md` for what each script guarantees.
 
 ---
 

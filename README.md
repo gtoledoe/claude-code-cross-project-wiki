@@ -35,7 +35,7 @@ Even worse: you can't share knowledge across projects without the recipient assu
 
 ## The Solution
 
-This system implements four interconnected practices:
+This system implements five interconnected practices:
 
 ### 1. Scope Isolation
 
@@ -79,7 +79,16 @@ draft → active → stale → archived
 - **`stale`** — may be outdated, review before using
 - **`archived`** — no longer applies, kept for historical context
 
-Claude Code assigns and updates status. Running a monthly "vault lint" surfaces all `stale` documents for review.
+**Who marks a document stale?** You do. Detecting and marking are separate roles:
+`tools/vault.py freshness` **detects** and reports candidates but never writes to a note;
+Claude Code **proposes** during a lint or a session close; **you decide** and set the field.
+
+No threshold knows whether a one-year-old ADR is still valid. Age is a hint, not a verdict —
+a script that flipped `active` to `stale` on a timer would be wrong often enough that you
+would stop trusting the field.
+
+Optionally add `review_after: YYYY-MM-DD` to documents that have a *knowable* expiry (a
+runbook pinned to a version, a cost analysis for one month). No field, no expiry.
 
 **What this prevents:**
 - ✅ Acting on outdated information
@@ -133,7 +142,40 @@ Implemented PgBouncer in transaction pooling mode.
 
 ---
 
-### 4. Adaptive Folder Structure
+### 4. Executable Checks
+
+**The Problem:** A protocol made only of conventions decays. Nothing tells you the lint was
+skipped for three months, that a decision was quietly rewritten, or that a token you pasted
+into a note while debugging is now in git history forever.
+
+**The Solution:** `tools/` — pure Python 3 and bash, **no dependencies**. Copy it to your
+vault root.
+
+```bash
+python3 tools/vault.py freshness      # what should I look at again?
+python3 tools/vault.py ledger verify  # was a decision rewritten or deleted?
+python3 tools/secret_scan.py          # did a credential end up in a note?
+bash    tools/close.sh my-project     # close: scan → ledger → commit → push
+```
+
+**The decision ledger** is the piece that does not exist elsewhere. It hash-chains your
+`type: decision` notes into `decisions.jsonl`, each entry signing the previous one. The note
+stays the source of truth; the ledger answers what a loose file cannot — *was this decision
+rewritten or deleted after it was made?* It detects an altered entry, a deleted line,
+reordering, a note edited behind your back and a decision quietly removed.
+
+**Two properties hold throughout:**
+
+- **They report, they do not decide.** No tool ever changes a document's `status`.
+- **The session close is fail-closed on secrets.** Findings — or a scanner that cannot run at
+  all — stop the close and commit nothing. A check that fails silently and lets you through
+  buys false confidence.
+
+Full documentation: [`tools/README.md`](tools/README.md).
+
+---
+
+### 5. Adaptive Folder Structure
 
 **The Problem:** Different project types need different knowledge structures.
 
@@ -266,7 +308,14 @@ Append-only session history:
 **Pending:** {what remains}
 ```
 
-### 5. Project folders (your choice)
+### 5. `tools/` (copy to vault root, optional but recommended)
+The executable half of the protocol. No dependencies:
+- `vault.py freshness` — what needs a second look
+- `vault.py ledger` — detects decisions rewritten or deleted
+- `secret_scan.py` — credentials in changed notes (never prints the value)
+- `close.sh` — session close: scan → ledger → commit → push, fail-closed
+
+### 6. Project folders (your choice)
 Name them based on your domain:
 - Web apps: `Arquitectura/`, `Negocio/`, `Sesiones/`
 - Infrastructure: `Decisiones/`, `Estado/`, `Problemas/`
@@ -325,6 +374,8 @@ Read:
 - **docs/implementation-guide.md** — Step-by-step setup (8 steps, ~20 min)
 - **docs/example-prompts.md** — 7 ready-to-use prompts
 - **docs/example-documents.md** — Sample ADR, Problem, Runbook
+- **tools/** — Executable checks: freshness report, decision ledger, secret scan,
+  session close. Pure Python 3 + bash, no dependencies. See `tools/README.md`.
 
 ---
 

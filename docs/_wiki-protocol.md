@@ -58,6 +58,19 @@ updated: YYYY-MM-DD
 ---
 ```
 
+### Optional: `review_after`
+
+```yaml
+review_after: YYYY-MM-DD   # optional — only for documents with a knowable expiry
+```
+
+Add it when the document has a real expiry date: a runbook pinned to a version,
+a cost analysis for one month, a decision that depends on a contract term. Once
+the date passes, `tools/vault.py freshness` lists the note.
+
+**If you do not set it, the note never expires.** Most notes should not have
+one. A blanket expiry on everything produces a report nobody reads.
+
 ### Status Lifecycle
 
 ```
@@ -68,6 +81,24 @@ draft → active → stale → archived
 - `active` — verified and current
 - `stale` — may be outdated, review before using
 - `archived` — no longer applies, kept for history
+
+### Who marks a document stale?
+
+**You do.** Detecting and marking are separate roles on purpose:
+
+| Actor | Role | Can it change a note? |
+|---|---|---|
+| `tools/vault.py freshness` | **Detects** and reports candidates | **No.** It never writes to a note — the only file the toolkit writes is the ledger, and only by appending. |
+| Claude Code | **Proposes** during a lint or a session close, with evidence | Only after you approve. |
+| You | **Decide** and set the field | Yes. |
+
+The reason for the boundary: no threshold knows whether a one-year-old ADR is
+still valid. Age is a hint, not a verdict. A script that flipped `active` to
+`stale` on a timer would be wrong often enough that you would stop trusting the
+field — and then the lifecycle stops meaning anything.
+
+`archived` follows the same rule, with one addition: **nothing is ever deleted.**
+An archived document keeps the historical context of why the decision was made.
 
 ---
 
@@ -337,12 +368,47 @@ Decisiones/ | Problemas/ | Runbooks/ | Arquitectura/
 
 ---
 
+## Executable Checks (`tools/`)
+
+Copy `tools/` to your vault root. Pure Python 3 and bash, no dependencies. Full
+documentation in `tools/README.md`.
+
+| Command | What it answers | Writes to notes? |
+|---|---|---|
+| `python3 tools/vault.py freshness` | What should I look at again? | Never |
+| `python3 tools/vault.py ledger sync` | Record decisions as they are made | Never (appends to `decisions.jsonl`) |
+| `python3 tools/vault.py ledger verify` | Was a decision rewritten or deleted? | Never |
+| `python3 tools/secret_scan.py` | Did a credential end up in a note? | Never |
+| `bash tools/close.sh [project]` | Close the session: scan → ledger → commit → push | Never |
+
+Two properties hold across all of them:
+
+- **They report, they do not decide.** The lifecycle stays under human control.
+  See "Who marks a document stale?" above.
+- **`close.sh` is fail-closed on secrets.** Findings — or a scanner that cannot
+  run at all — stop the close and commit nothing. A check that fails silently
+  and lets you through buys false confidence.
+
+The decision ledger deserves one line of explanation: it is a hash chain over
+your `type: decision` notes, where each entry signs the previous one. The note
+remains the source of truth. The ledger exists to answer the one question a
+loose file cannot — whether a decision was quietly rewritten or deleted after
+it was made.
+
+Wire `close.sh` into your close-session routine. Left as a manual step it does
+not get run, and the vault sits unbacked on one disk.
+
+---
+
 ## Constraints
 
 ```
 NEVER write to another project's folder
 NEVER create wikilinks without creating target page
 NEVER delete documents (archive instead)
+NEVER let a tool change a document's status by itself — it reports, you decide
+NEVER hand-edit decisions.jsonl (append-only; verify exists to catch that)
+NEVER commit the vault when the secret scan fails or cannot run
 NEVER assume another project's decision applies to yours
 ALWAYS add complete frontmatter to new documents
 ALWAYS update _log.md after documentation operations
@@ -389,14 +455,28 @@ Record in _log.md
 
 ### LINT (vault health check)
 
+Two halves. The mechanical half is a script; the judgement half is a prompt.
+
+**Mechanical — run the tools (see `tools/README.md`):**
+
+```bash
+python3 tools/vault.py freshness    # past review date · stale and forgotten
+python3 tools/vault.py ledger verify # decisions rewritten or deleted
+python3 tools/secret_scan.py         # credentials in changed notes
+```
+
+**Judgement — ask Claude Code to check what a script cannot:**
+
 ```
 Detect broken wikilinks
-Detect missing frontmatter
-Detect stale documents (60+ days)
-Detect orphan concepts
-Report findings in _log.md
+Detect missing or incomplete frontmatter
+Detect orphan concepts (repeated across projects, no page in _shared/)
+Report findings in _log.md as type `lint`
 Propose actions (don't execute without approval)
 ```
+
+Neither half changes a `status` field on its own. They produce a list; you
+decide what is actually outdated.
 
 ---
 

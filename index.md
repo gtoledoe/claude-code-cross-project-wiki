@@ -98,6 +98,23 @@ Read this first. It explains why everything else exists.
 
 ---
 
+### 7. tools/
+
+**What it is:** The executable half of the protocol — freshness report, decision ledger,
+secret scan and session close. Pure Python 3 and bash, no dependencies, no installs.
+
+**Contains:**
+- `vault.py freshness` — notes past their review date or marked stale and forgotten
+- `vault.py ledger verify|sync` — hash-chained index of decisions; detects rewrites/deletions
+- `secret_scan.py` — credentials in changed notes; never prints the value
+- `close.sh` — scan → ledger → commit → push, fail-closed on secrets
+- `test_secret_scan.py` — 17-case regression battery
+
+**Use this:** Copy the whole `tools/` folder to your Obsidian vault root
+(the vault must be a git repo). Read `tools/README.md` first.
+
+---
+
 ## Recommended Reading Order
 
 **To understand the concept:**
@@ -148,12 +165,18 @@ llm-claude-code-wiki/
 ├── README.md                    — system overview
 ├── index.md                     — this file
 ├── CLAUDE.md                    — tells Claude Code how to use this repo
-└── docs/
-    ├── CLAUDE.md                — CLAUDE.md template (copy to your project)
-    ├── _wiki-protocol.md        — global protocol (copy to your vault)
-    ├── implementation-guide.md  — 8-step setup guide
-    ├── example-prompts.md       — 7 ready-to-use prompts
-    └── example-documents.md    — ADR, Problem, Runbook examples
+├── docs/
+│   ├── CLAUDE.md                — CLAUDE.md template (copy to your project)
+│   ├── _wiki-protocol.md        — global protocol (copy to your vault)
+│   ├── implementation-guide.md  — 8-step setup guide
+│   ├── example-prompts.md       — 7 ready-to-use prompts
+│   └── example-documents.md     — ADR, Problem, Runbook examples
+└── tools/                       — executable checks (copy to your vault root)
+    ├── README.md                — what each tool does and why
+    ├── vault.py                 — freshness report + decision ledger
+    ├── secret_scan.py           — fail-closed secret scan of changed notes
+    ├── close.sh                 — session close: scan → ledger → commit → push
+    └── test_secret_scan.py      — regression battery for the patterns
 ```
 
 ---
@@ -169,8 +192,9 @@ Before using or sharing, verify you have these files:
 - [ ] docs/example-prompts.md — 7 ready-to-use prompts
 - [ ] docs/example-documents.md — 3 real document examples
 - [ ] CLAUDE.md (repo root) — tells Claude Code its role
+- [ ] tools/ — executable checks (5 files, no dependencies)
 
-**If you have these 7 files, you have everything.**
+**If you have these 8 items, you have everything.**
 
 ---
 

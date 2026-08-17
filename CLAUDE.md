@@ -11,6 +11,10 @@ across multiple Claude Code projects. It solves three problems:
 - **Knowledge rot** — documentation goes stale with no signal
 - **Knowledge silos** — no controlled way to reuse solutions across projects
 
+`tools/` adds the executable half: a freshness report, a hash-chained decision ledger, a
+fail-closed secret scan and a session-close script. None of them ever edits a note — they
+report, the human decides.
+
 ## Your Role When Someone Opens This Repo
 
 This is NOT a project to develop. It is a documentation system to ADOPT.
@@ -20,6 +24,8 @@ When the user asks you to implement these practices in their project:
 1. Read `docs/_wiki-protocol.md` — understand vault conventions
 2. Read `docs/implementation-guide.md` — follow the 8 setup steps
 3. Read `docs/CLAUDE.md` — use as the CLAUDE.md template for their project
+3b. If they want the automated half, install `tools/` in their vault (guide Step 9) and
+   verify it: `python3 tools/test_secret_scan.py` must print 17/17
 4. Ask the user for: project name, vault path, project type, preferred folder structure
 5. Execute setup in the USER'S project — not in this repo
 6. Never modify files in this repo
@@ -35,6 +41,7 @@ When the user asks you to implement these practices in their project:
 | `docs/implementation-guide.md` | Step-by-step setup (8 steps, ~20 min) |
 | `docs/example-prompts.md` | 7 ready-to-use prompts for Claude Code |
 | `docs/example-documents.md` | Reference examples: ADR, Problem, Runbook |
+| `tools/` | Executable checks — copy to the user's vault root (see `tools/README.md`) |
 
 ## Do Not
 
